@@ -1,10 +1,10 @@
 
 import * as vscode from 'vscode';
-import { ProjectHotMapPanel } from './hotMapPanel';
+import { ProjectHeatmapPanel } from './heatmapPanel';
 
 export function activate(context: vscode.ExtensionContext) {
-	const disposable = vscode.commands.registerCommand('project-hot-map.showHeatMap', () => {
-		ProjectHotMapPanel.show();
+	const disposable = vscode.commands.registerCommand('project-heatmap.showHeatmap', () => {
+		ProjectHeatmapPanel.show(context.extensionUri);
 	});
 
 	context.subscriptions.push(disposable);

@@ -1,8 +1,11 @@
 {
-  "name": "project-hot-map",
-  "displayName": "project-hot-map",
+  "name": "project-heatmap",
+  "displayName": "Project Heatmap",
   "description": "",
   "version": "0.0.1",
+  "author": "LiRenTech",
+  "icon": "media/icon.png",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.110.0"
   },
@@ -16,15 +19,15 @@
   "contributes": {
     "commands": [
       {
-        "command": "project-hot-map.showHeatMap",
-        "category": "Project Hot Map",
-        "title": "显示项目文件热力图 (showHeatMap)"
+        "command": "project-heatmap.showHeatmap",
+        "category": "Project Heatmap",
+        "title": "显示项目文件热力图 (showHeatmap)"
       }
     ],
     "configuration": {
-      "title": "Project Hot Map",
+      "title": "Project Heatmap",
       "properties": {
-        "projectHotMap.excludePatterns": {
+        "projectHeatmap.excludePatterns": {
           "type": "array",
           "default": [
             "pnpm-lock.yaml",

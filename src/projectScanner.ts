@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-export interface HotMapFileItem {
+export interface HeatmapFileItem {
 	workspaceName: string;
 	relativePath: string;
 	displayPath: string;
@@ -12,13 +12,13 @@ export interface HotMapFileItem {
 	commitCount: number;
 }
 
-export interface HotMapPayload {
+export interface HeatmapPayload {
 	generatedAt: string;
 	workspaceCount: number;
 	fileCount: number;
 	maxLineCount: number;
 	maxCommitCount: number;
-	items: HotMapFileItem[];
+	items: HeatmapFileItem[];
 }
 
 interface GitContext {
@@ -26,7 +26,7 @@ interface GitContext {
 	scopePrefix: string;
 }
 
-export async function collectHotMapData(workspaceFolders: readonly vscode.WorkspaceFolder[]): Promise<HotMapPayload> {
+export async function collectHeatmapData(workspaceFolders: readonly vscode.WorkspaceFolder[]): Promise<HeatmapPayload> {
 	const excludeMatcher = createExcludeMatcher(getConfiguredExcludePatterns());
 	const items = (await Promise.all(
 		workspaceFolders.map((workspaceFolder) => scanWorkspaceFolder(workspaceFolder, workspaceFolders.length > 1, excludeMatcher)),
@@ -55,7 +55,7 @@ async function scanWorkspaceFolder(
 	workspaceFolder: vscode.WorkspaceFolder,
 	includeWorkspaceName: boolean,
 	excludeMatcher: (relativeFilePath: string) => boolean,
-): Promise<HotMapFileItem[]> {
+): Promise<HeatmapFileItem[]> {
 	const folderPath = workspaceFolder.uri.fsPath;
 	const gitContext = await getGitContext(folderPath);
 	const filePaths = gitContext ? await getGitFilePaths(gitContext) : await getFilesystemFilePaths(folderPath, excludeMatcher);
@@ -88,7 +88,7 @@ async function scanWorkspaceFolder(
 			lineCount,
 			commitCount: commitCounts.get(relativeFilePath) ?? 0,
 		};
-	}).then((items) => items.filter((item): item is HotMapFileItem => item !== undefined));
+	}).then((items) => items.filter((item): item is HeatmapFileItem => item !== undefined));
 }
 
 async function getGitContext(folderPath: string): Promise<GitContext | undefined> {
@@ -231,9 +231,9 @@ function normalizePath(filePath: string): string {
 }
 
 function getConfiguredExcludePatterns(): string[] {
-	const configuration = vscode.workspace.getConfiguration('projectHotMap');
-	const configuredPatterns = configuration.get<string[]>('excludePatterns', []);
-	return configuredPatterns
+	const nextConfiguration = vscode.workspace.getConfiguration('projectHeatmap');
+	const nextPatterns = nextConfiguration.get<string[]>('excludePatterns', []);
+	return nextPatterns
 		.map((pattern) => pattern.trim())
 		.filter((pattern) => pattern.length > 0);
 }

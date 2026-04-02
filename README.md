@@ -1,71 +1,72 @@
-# project-hot-map README
+# Project Heatmap（项目文件热力图）
 
-This is the README for your extension "project-hot-map". After writing up a brief description, we recommend including the following sections.
+在编辑器中生成一个“项目文件热力图”面板：用矩形树图（Treemap）展示项目里每个文件的体积与热度，帮助你快速定位“大文件 / 热点文件”。
 
-## Features
+- 矩形面积：文件行数（越大代表代码体积越大）
+- 颜色热度：Git 提交触达次数（越热越偏橙/黄）
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+## 快速开始
 
-For example if there is an image subfolder under your extension project workspace:
+1. 在 VS Code 中打开一个文件夹或工作区（Workspace）。
+2. 打开命令面板：
+   - macOS：`Cmd+Shift+P`
+   - Windows/Linux：`Ctrl+Shift+P`
+3. 运行命令：`显示项目文件热力图 (showHeatmap)`
+4. 在面板内操作：
+   - 点击“刷新热力图”：重新扫描项目与 Git 历史
+   - 滑动“色彩倾向（冷/热）”：调整颜色对比（更容易看出热点差异）
+   - 悬停矩形：查看文件路径、行数、提交触达等信息
+   - 点击矩形：直接打开对应文件
 
-\!\[feature X\]\(images/feature-x.png\)
+## 读图与口径
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- 面积（体积）：文件行数（按文本换行符统计；二进制文件按 1 行处理）
+- 热度（颜色）：Git 历史中该文件路径出现的次数（不追踪重命名）
+- 非 Git 项目：仍会显示“体积（行数）”，但热度统一为 0
 
-## Requirements
+## 配置
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+本扩展提供 1 个配置项，用于排除不想纳入统计/渲染的文件。
 
-## Extension Settings
+### `projectHeatmap.excludePatterns`
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+- 类型：`string[]`
+- 默认值：`["pnpm-lock.yaml","Cargo.lock","yarn.lock","package-lock.json","npm-shrinkwrap.json"]`
+- 支持：文件名或简单通配符 `*`
 
-For example:
+示例（`settings.json`）：
 
-This extension contributes the following settings:
+```json
+{
+  "projectHeatmap.excludePatterns": [
+    "pnpm-lock.yaml",
+    "*.min.js",
+    "dist/*",
+    "*/generated/*"
+  ]
+}
+```
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+匹配规则说明：
 
-## Known Issues
+- pattern 不包含 `/` 时：按“文件名”匹配（例如 `Cargo.lock`、`*.min.js`）
+- pattern 包含 `/` 时：按“相对路径”匹配（例如 `dist/*`）
+- 仅支持简单 `*` 通配（会被当作“任意字符序列”处理）
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## 需求与建议
 
-## Release Notes
+- 若希望显示“热度（提交触达次数）”，需要项目是 Git 仓库且本机可用 `git` 命令。
+- 大型仓库首次生成可能较慢，建议通过 `excludePatterns` 排除构建产物、依赖目录、生成文件等。
 
-Users appreciate release notes as you update your extension.
+## 常见问题
 
-### 1.0.0
+### 为什么所有文件颜色都很冷/几乎一样？
 
-Initial release of ...
+通常是以下原因之一：
 
-### 1.0.1
+- 当前工作区不是 Git 仓库（或无法执行 `git`），热度会全部为 0
+- Git 历史较少或文件变更集中在少数文件
 
-Fixed issue #.
+### 点击矩形没有打开文件？
 
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+请确认该文件仍存在于当前工作区中，并且没有被 VS Code 的权限/只读工作区限制拦截。

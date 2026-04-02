@@ -1,17 +1,17 @@
 import * as vscode from 'vscode';
-import { collectHotMapData } from './projectScanner';
+import { collectHeatmapData } from './projectScanner';
 
-export class ProjectHotMapPanel {
-	private static currentPanel: ProjectHotMapPanel | undefined;
+export class ProjectHeatmapPanel {
+	private static currentPanel: ProjectHeatmapPanel | undefined;
 
-	public static show() {
-		if (ProjectHotMapPanel.currentPanel) {
-			ProjectHotMapPanel.currentPanel.panel.reveal(vscode.ViewColumn.Active);
+	public static show(extensionUri: vscode.Uri) {
+		if (ProjectHeatmapPanel.currentPanel) {
+			ProjectHeatmapPanel.currentPanel.panel.reveal(vscode.ViewColumn.Active);
 			return;
 		}
 
 		const panel = vscode.window.createWebviewPanel(
-			'projectHotMap',
+			'projectHeatmap',
 			'项目文件热力图',
 			vscode.ViewColumn.Active,
 			{
@@ -20,14 +20,18 @@ export class ProjectHotMapPanel {
 			},
 		);
 
-		ProjectHotMapPanel.currentPanel = new ProjectHotMapPanel(panel);
+		ProjectHeatmapPanel.currentPanel = new ProjectHeatmapPanel(panel, extensionUri);
 	}
 
 	private readonly panel: vscode.WebviewPanel;
 	private readonly disposables: vscode.Disposable[] = [];
 
-	private constructor(panel: vscode.WebviewPanel) {
+	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
 		this.panel = panel;
+		this.panel.iconPath = {
+			light: vscode.Uri.joinPath(extensionUri, 'media', 'flame-light.svg'),
+			dark: vscode.Uri.joinPath(extensionUri, 'media', 'flame-dark.svg'),
+		};
 		this.panel.webview.html = this.getHtml(this.panel.webview);
 
 		this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -65,7 +69,7 @@ export class ProjectHotMapPanel {
 			if (!workspaceFolders || workspaceFolders.length === 0) {
 				throw new Error('请先在 VS Code 中打开一个项目文件夹。');
 			}
-			const payload = await collectHotMapData(workspaceFolders);
+			const payload = await collectHeatmapData(workspaceFolders);
 			await this.panel.webview.postMessage({ type: 'data', payload });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : '生成热力图失败。';
@@ -411,8 +415,8 @@ export class ProjectHotMapPanel {
 			if (payload.items.length === 0) {
 				return '当前项目没有可显示的文件。';
 			}
-			const hottest = payload.items.reduce((current, item) => item.commitCount > current.commitCount ? item : current, payload.items[0]);
-			return '共 ' + formatNumber(payload.fileCount) + ' 个文件，最大体积 ' + formatNumber(payload.maxLineCount) + ' 行，最高热度 ' + formatNumber(payload.maxCommitCount) + ' 次提交触达；当前最热文件：' + hottest.displayPath;
+			const mostActive = payload.items.reduce((current, item) => item.commitCount > current.commitCount ? item : current, payload.items[0]);
+			return '共 ' + formatNumber(payload.fileCount) + ' 个文件，最大体积 ' + formatNumber(payload.maxLineCount) + ' 行，最高热度 ' + formatNumber(payload.maxCommitCount) + ' 次提交触达；当前最热文件：' + mostActive.displayPath;
 		}
 
 		function render() {
@@ -712,7 +716,7 @@ export class ProjectHotMapPanel {
 	}
 
 	private dispose() {
-		ProjectHotMapPanel.currentPanel = undefined;
+		ProjectHeatmapPanel.currentPanel = undefined;
 		while (this.disposables.length > 0) {
 			const disposable = this.disposables.pop();
 			disposable?.dispose();
