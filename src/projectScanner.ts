@@ -27,7 +27,10 @@ interface GitContext {
 }
 
 export async function collectHotMapData(workspaceFolders: readonly vscode.WorkspaceFolder[]): Promise<HotMapPayload> {
-	const items = (await Promise.all(workspaceFolders.map((workspaceFolder) => scanWorkspaceFolder(workspaceFolder, workspaceFolders.length > 1)))).flat();
+	const excludeMatcher = createExcludeMatcher(getConfiguredExcludePatterns());
+	const items = (await Promise.all(
+		workspaceFolders.map((workspaceFolder) => scanWorkspaceFolder(workspaceFolder, workspaceFolders.length > 1, excludeMatcher)),
+	)).flat();
 	items.sort((left, right) => {
 		if (right.lineCount !== left.lineCount) {
 			return right.lineCount - left.lineCount;
@@ -48,10 +51,14 @@ export async function collectHotMapData(workspaceFolders: readonly vscode.Worksp
 	};
 }
 
-async function scanWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder, includeWorkspaceName: boolean): Promise<HotMapFileItem[]> {
+async function scanWorkspaceFolder(
+	workspaceFolder: vscode.WorkspaceFolder,
+	includeWorkspaceName: boolean,
+	excludeMatcher: (relativeFilePath: string) => boolean,
+): Promise<HotMapFileItem[]> {
 	const folderPath = workspaceFolder.uri.fsPath;
 	const gitContext = await getGitContext(folderPath);
-	const filePaths = gitContext ? await getGitFilePaths(gitContext) : await getFilesystemFilePaths(folderPath);
+	const filePaths = gitContext ? await getGitFilePaths(gitContext) : await getFilesystemFilePaths(folderPath, excludeMatcher);
 	const uniqueFilePaths = Array.from(new Set(filePaths)).filter((filePath) => filePath.length > 0);
 	const commitCounts = gitContext ? await getGitCommitCounts(gitContext) : new Map<string, number>();
 
@@ -67,6 +74,9 @@ async function scanWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder, incl
 			? normalizePath(path.relative(folderPath, absolutePath))
 			: relativeFilePath;
 		if (workspaceRelativePath.length === 0) {
+			return undefined;
+		}
+		if (excludeMatcher(workspaceRelativePath)) {
 			return undefined;
 		}
 		const lineCount = await countFileLines(absolutePath);
@@ -123,7 +133,7 @@ async function getGitCommitCounts(gitContext: GitContext): Promise<Map<string, n
 	}
 }
 
-async function getFilesystemFilePaths(rootPath: string): Promise<string[]> {
+async function getFilesystemFilePaths(rootPath: string, excludeMatcher: (relativeFilePath: string) => boolean): Promise<string[]> {
 	const results: string[] = [];
 	const queue: string[] = [rootPath];
 
@@ -143,7 +153,10 @@ async function getFilesystemFilePaths(rootPath: string): Promise<string[]> {
 				continue;
 			}
 			if (entry.isFile()) {
-				results.push(normalizePath(path.relative(rootPath, entryPath)));
+				const relativePath = normalizePath(path.relative(rootPath, entryPath));
+				if (!excludeMatcher(relativePath)) {
+					results.push(relativePath);
+				}
 			}
 		}
 	}
@@ -215,6 +228,40 @@ function parseNullSeparatedOutput(output: string): string[] {
 
 function normalizePath(filePath: string): string {
 	return filePath.replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function getConfiguredExcludePatterns(): string[] {
+	const configuration = vscode.workspace.getConfiguration('projectHotMap');
+	const configuredPatterns = configuration.get<string[]>('excludePatterns', []);
+	return configuredPatterns
+		.map((pattern) => pattern.trim())
+		.filter((pattern) => pattern.length > 0);
+}
+
+function createExcludeMatcher(patterns: readonly string[]): (relativeFilePath: string) => boolean {
+	const normalizedPatterns = patterns
+		.map((pattern) => pattern.trim())
+		.filter((pattern) => pattern.length > 0)
+		.map((pattern) => normalizePath(pattern));
+
+	return (relativeFilePath: string) => {
+		const normalizedPath = normalizePath(relativeFilePath);
+		const fileName = path.posix.basename(normalizedPath);
+		return normalizedPatterns.some((pattern) => matchPattern(normalizedPath, fileName, pattern));
+	};
+}
+
+function matchPattern(relativeFilePath: string, fileName: string, pattern: string): boolean {
+	if (!pattern.includes('/')) {
+		return wildcardToRegExp(pattern).test(fileName);
+	}
+	return wildcardToRegExp(pattern).test(relativeFilePath);
+}
+
+function wildcardToRegExp(pattern: string): RegExp {
+	const escapedPattern = pattern.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+	const regexPattern = `^${escapedPattern.replace(/\*/g, '.*')}$`;
+	return new RegExp(regexPattern);
 }
 
 async function mapWithConcurrency<TInput, TOutput>(
