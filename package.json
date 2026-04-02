@@ -9,13 +9,16 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "project-hot-map.helloWorld",
-        "title": "Hello World"
+        "command": "project-hot-map.showHeatMap",
+        "category": "Project Hot Map",
+        "title": "显示项目文件热力图 (showHeatMap)"
       }
     ]
   },
