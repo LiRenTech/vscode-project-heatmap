@@ -142,6 +142,33 @@ export class ProjectHotMapPanel {
 			gap: 12px;
 		}
 
+		.color-control {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 8px 10px;
+			border-radius: 10px;
+			border: 1px solid rgba(255, 255, 255, 0.08);
+			background: rgba(7, 7, 9, 0.42);
+		}
+
+		.color-control label {
+			font-size: 12px;
+			opacity: 0.82;
+			white-space: nowrap;
+		}
+
+		.color-control input[type="range"] {
+			width: 140px;
+			accent-color: #ff9923;
+		}
+
+		.color-control .hint {
+			font-size: 12px;
+			opacity: 0.72;
+			white-space: nowrap;
+		}
+
 		button {
 			border: 1px solid rgba(255, 255, 255, 0.1);
 			border-radius: 8px;
@@ -234,6 +261,12 @@ export class ProjectHotMapPanel {
 				<div id="summary" class="subtitle">准备读取项目文件与 Git 提交历史…</div>
 			</div>
 			<div class="actions">
+				<div class="color-control">
+					<label for="colorBias">色彩倾向</label>
+					<span class="hint">冷</span>
+					<input id="colorBias" type="range" min="0" max="100" step="1" value="50" />
+					<span class="hint">热</span>
+				</div>
 				<button id="refresh" type="button">刷新热力图</button>
 			</div>
 		</div>
@@ -254,6 +287,7 @@ export class ProjectHotMapPanel {
 		const tooltip = document.getElementById('tooltip');
 		const summary = document.getElementById('summary');
 		const statusNode = document.getElementById('status');
+		const colorBiasRange = document.getElementById('colorBias');
 		const refreshButton = document.getElementById('refresh');
 		const canvasWrap = document.querySelector('.canvas-wrap');
 		const context = canvas.getContext('2d');
@@ -263,6 +297,7 @@ export class ProjectHotMapPanel {
 			rects: [],
 			status: 'loading',
 			error: '',
+			colorBias: 50,
 		};
 		const paletteStops = [
 			{ stop: 0, color: '#040404' },
@@ -276,6 +311,13 @@ export class ProjectHotMapPanel {
 		const resizeObserver = new ResizeObserver(() => render());
 
 		resizeObserver.observe(document.querySelector('.canvas-wrap'));
+		restoreState();
+		colorBiasRange.addEventListener('input', () => {
+			const value = Number(colorBiasRange.value || 50);
+			state.colorBias = clamp(0, 100, value);
+			vscode.setState({ colorBias: state.colorBias });
+			render();
+		});
 		refreshButton.addEventListener('click', () => {
 			vscode.postMessage({ type: 'refresh' });
 		});
@@ -562,6 +604,10 @@ export class ProjectHotMapPanel {
 				hideTooltip();
 				return;
 			}
+			if (!canvasWrap) {
+				hideTooltip();
+				return;
+			}
 			const wrapRect = canvasWrap.getBoundingClientRect();
 			tooltip.innerHTML = '<strong>' + escapeHtml(hovered.displayPath) + '</strong>'
 				+ '代码行数：' + formatNumber(hovered.lineCount) + '<br />'
@@ -581,6 +627,7 @@ export class ProjectHotMapPanel {
 		}
 
 		function colorForHeat(ratio) {
+			ratio = applyColorBias(ratio);
 			if (!Number.isFinite(ratio) || ratio <= 0) {
 				return paletteStops[0].color;
 			}
@@ -596,6 +643,32 @@ export class ProjectHotMapPanel {
 				}
 			}
 			return paletteStops[paletteStops.length - 1].color;
+		}
+
+		function applyColorBias(ratio) {
+			if (!Number.isFinite(ratio) || ratio <= 0) {
+				return 0;
+			}
+			if (ratio >= 1) {
+				return 1;
+			}
+			const t = clamp(0, 1, (state.colorBias - 0) / 100);
+			const minGamma = 0.35;
+			const maxGamma = 3.0;
+			const gamma = Math.pow(maxGamma, 1 - t) * Math.pow(minGamma, t);
+			return Math.pow(ratio, gamma);
+		}
+
+		function restoreState() {
+			const saved = vscode.getState();
+			if (saved && typeof saved.colorBias === 'number') {
+				state.colorBias = clamp(0, 100, saved.colorBias);
+				colorBiasRange.value = String(state.colorBias);
+			}
+		}
+
+		function clamp(min, max, value) {
+			return Math.min(max, Math.max(min, value));
 		}
 
 		function interpolateColor(left, right, ratio) {
