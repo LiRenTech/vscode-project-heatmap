@@ -1,11 +1,19 @@
 {
   "name": "project-heatmap",
   "displayName": "Project Heatmap",
-  "description": "",
+  "description": "在 VS Code 中以矩形树图（Treemap）展示项目文件热力图：面积代表文件行数，颜色代表 Git 提交触达次数。",
   "version": "0.0.1",
   "author": "LiRenTech",
   "icon": "media/icon.png",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LiRenTech/vscode-project-heatmap.git"
+  },
+  "homepage": "https://github.com/LiRenTech/vscode-project-heatmap",
+  "bugs": {
+    "url": "https://github.com/LiRenTech/vscode-project-heatmap/issues"
+  },
   "engines": {
     "vscode": "^1.110.0"
   },
