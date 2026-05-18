@@ -16,7 +16,7 @@
     "url": "https://github.com/LiRenTech/vscode-project-heatmap/issues"
   },
   "engines": {
-    "vscode": "^1.110.0"
+    "vscode": "^1.70.0"
   },
   "categories": [
     "Other"
@@ -68,7 +68,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.110.0",
+    "@types/vscode": "^1.70.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "typescript-eslint": "^8.48.1",
